@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 06:08:57",revision=7]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 06:44:33",revision=10]]
 --config area
 local FOCUS_LENGTH = 1
 local draw_window_width =480
@@ -85,7 +85,7 @@ function Render:new()
 end
 
 function Render:init()
-    self.camera = Camera:new(1,vec(0,0,0),Quat(0,0,0,1))
+    self.camera = Camera:new(FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
 end
 
 
@@ -98,6 +98,13 @@ function Camera:new(focusLength,position,quat)
     instance:init(focusLength,position,quat)
     return instance
 
+end
+
+function Camera:__tostring()
+    local x,y,z = self._pos[0], self._pos[1], self._pos[2]
+    local eu = self._quat:EulerAngle()
+    local ex,ey,ez = eu.x, eu.y, eu.z
+    return string.format("[Camposition x=%.2f, y=%.2f, z=%.2f]\n[Eulerangle x=%.2f, y=%.2f, z=%.2f]\n[FocusLength %.2f AspectRatio %.2f]", x, y, z,ex,ey,ez,self._focusLength,self._aspectRatio)
 end
 
 function Camera:init(focusLength,position,quat)
