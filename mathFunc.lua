@@ -1,3 +1,4 @@
+--[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-17 06:02:29",revision=6]]
 
 function sin_n(n)
    return -sin(n) 
@@ -84,6 +85,10 @@ function Quat:Normalize()
     self.y = self.y * inv_length
     self.z = self.z * inv_length
     self.w = self.w * inv_length
+end
+
+function Quat:Copy()
+    return Quat(self.x,self.y,self.z,self.w)
 end
 
 function Quat.FromAxisAngle(axis,angle)
@@ -179,7 +184,7 @@ function Quat.YRotate(angle)
     return Quat(0,sinh,0,cosh)
 end
 
-function Quat.YRotate(angle)
+function Quat.ZRotate(angle)
     local halfAngle = 0.5*angle
     local cosh = cos(halfAngle) 
     local sinh = sin_n(halfAngle)
@@ -318,20 +323,14 @@ end
 
 --**********************matrix*************************************************
 
-function W2CameraMat(position,quat)
-    local resultm34 = userdata("f64",3,4)
-    local tempM33 = quat:Matrix(3):transpose()
-    tempM33:blit(resultm34,0,0,0,0,3,3)
-    local camPosition = -1*position
-    camPosition:matmul(tempM33):blit(resultm34,0,0,0,3,3,1)
-    return resultm34
-end
+
 
 function O2WMat(position,scale,quat)
     local resultm34 = quat:Matrix(4) --create 3*4 matrix
     resultm34:mul(scale.x,true,0,0,3)--apply the x,y,z scale  
     resultm34:mul(scale.y,true,0,3,3)
     resultm34:mul(scale.z,true,0,6,3)
-    position:blit(O2WMat,0,0,0,3,3,1)
+    position:blit(resultm34,0,0,0,3,3,1)
     return resultm34
 end
+
