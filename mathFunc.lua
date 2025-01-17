@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-17 06:02:29",revision=6]]
+--[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-17 06:38:37",revision=8]]
 
 function sin_n(n)
    return -sin(n) 
@@ -278,8 +278,8 @@ end
 
 function Euler:Quaternion(quat)
     if quat != nil then
-        local x, y, z, w = q.x, q.y, q.z, q.w
-        local ex,ey,ez
+        local x, y, z, w = quat.x, quat.y, quat.z, quat.w
+
         local sp = -2.0 * (y * z - w * x)
         if (abs(sp) > 0.9999) then
             self.x = 0.25 * sp
@@ -287,8 +287,8 @@ function Euler:Quaternion(quat)
             self.z = 0.0
         else 
             self.x = asin_n(sp)
-            self.x = atan2_n(x * z + w * y, 0.5 - x * x - y * y)
-            self.x = atan2_n(x * y + w * z, 0.5 - x * x - z * z)
+            self.y = atan2_n(x * z + w * y, 0.5 - x * x - y * y)
+            self.z = atan2_n(x * y + w * z, 0.5 - x * x - z * z)
         end
     else
         local returnq = Quat:new(self)
