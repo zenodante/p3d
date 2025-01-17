@@ -1,10 +1,10 @@
 --[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 06:44:33",revision=10]]
 --config area
 local FOCUS_LENGTH = 1
-local draw_window_width =480
-local draw_window_height = 270
-local half_x = draw_window_width//2
-local half_y = draw_window_height//2
+local DRAW_WINDOW_WIDTH =480
+local DRAW_WINDOW_HEIGHT = 270
+local HALF_X = DRAW_WINDOW_WIDTH//2
+local HALF_Y = DRAW_WINDOW_HEIGHT//2
 local MAX_TRI = 1000
 --end of config
 local currentFreeTriIndx = 0
@@ -111,17 +111,17 @@ function Camera:init(focusLength,position,quat)
     self._pos = position or vec(1,1,1)
     self._quat = quat or Quat(0,0,0,1)
     self._focusLength = focusLength or 1 
-    self._aspectRatio = draw_window_width/draw_window_height
-    self.W2Cmatrix = nil
-    self.W2ScreenMatrix = nil
-    self.projectionMatrix = nil
+    self._aspectRatio = DRAW_WINDOW_WIDTH/DRAW_WINDOW_HEIGHT
+    self.W2CameraMat = nil
+    self.W2ClipMat = nil
+    self.clipMat = nil
     self:UpdataMatrix()
 end
 
 function Camera:UpdataMatrix()
-    self.W2Cmatrix= self:ResetW2CameraMat()
-    self.projectionMAtrix= self:ResetClipMat()
-    self.W2ScreenMatrix = self.W2Cmatrix:matmul3d(self.projectionMAtrix)
+    self.W2CameraMat= self:ResetW2CameraMat()
+    self.clipMat= self:ResetClipMat()
+    self.W2ClipMat = self.W2CameraMat:matmul3d(self.clipMat)
 end
 
 function Camera:ResetClipMat()
@@ -197,6 +197,19 @@ function Camera:LookAt(target_v,up_v)
     self:UpdataMatrix()
 end
 
+
+function Vec2Screen(v)
+	local z = v:column(2)--get z column
+	local inv_z = 1/z--get 1/z
+	v:mul(inv_z,true,0,0,1,1,3,len)
+	v:mul(inv_z,true,0,1,1,1,3,len)
+	v:add(vec(1.0,-1.0),true,0,0,2,0,3,len)
+	v:mul(vec(HALF_X,-HALF_Y),true,0,0,2,0,3,len)
+
+	inv_z:blit(v,0,0,2,0,1,len)--copy 1/z to the vec
+    return v,z
+end
+
 --*************************Draw**************************
 
 function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,rinvW,ltinvW,rtinvW)
@@ -212,7 +225,7 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
         s=ceil(y0)-y0
     end
     l,r,lu,lv,ru,rv,linvW,rinvW=l+s*ldx,r+s*rdx,lu+s*ldu,lv+s*ldv,ru+s*rdu,rv+s*rdv,linvW+s*ldinvW,rinvW+s*rdinvW
-    y1=min(y1,draw_window_height)
+    y1=min(y1,DRAW_WINDOW_HEIGHT)
     local len=ceil(y1)-ceil(y0)
     if(len<=0) then return end    
     local lm1=len-1
@@ -238,7 +251,7 @@ function RasterizeTri(sprite_idx,vec0,vec1,vec2,uv0,uv1,uv2)
     if(vec1.y > vec2.y) then vec1,vec2=vec2,vec1 uv1,uv2 = uv2,uv1 end  
     local x0,x1,x2=vec0.x,vec1.x,vec2.x
     local y0,y1,y2=vec0.y,vec1.y,vec2.y
-    if (y0 >=  draw_window_height) or (y2 <0) then return end
+    if (y0 >=  DRAW_WINDOW_HEIGHT) or (y2 <0) then return end
     local inv_w0,inv_w1,inv_w2=vec0[2],vec1[2],vec2[2]
     local u0,u1,u2=uv0[0]*inv_w0,uv1[0]*inv_w1,uv2[0]*inv_w2
     local v0,v1,v2=uv0[1]*inv_w0,uv1[1]*inv_w1,uv2[1]*inv_w2
