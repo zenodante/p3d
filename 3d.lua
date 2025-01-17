@@ -1,4 +1,6 @@
 --[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 06:44:33",revision=10]]
+
+--Left hand coordination, row vector, right mult matrix
 --config area
 local FOCUS_LENGTH = 1
 local DRAW_WINDOW_WIDTH =480
