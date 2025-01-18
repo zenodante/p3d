@@ -120,7 +120,7 @@ function Quat.LookRotation(from, to, up)
     if dot < -0.9999 then
         return Quat.FromAxisAngle(uN, 0.5)
     elseif dot > 0.9999 then
-        return Quaternion.Identity()
+        return Quat.Identity()
     end
 
     local rotAngle = 0.25 - asin_n(dot)

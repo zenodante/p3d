@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 20:51:15",revision=11]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-18 05:32:36",revision=26]]
 
 --Left hand coordination, row vector, right mult matrix
 --config area
@@ -208,10 +208,13 @@ end
 
 function VecList2Screen(v,o2clipMat)
     local len = v:height()
-    local vc = userdata("f64",4,len)   
-    vc:add(1,true)
-    v:blit(vc,0,0,0,0,3,len)
-    vc=vc:matmul(o2clipMat)
+    local vt = userdata("f64",4,len)   
+    vt:add(1,true,0,3,1,0,4,len)
+    
+    v:blit(vt,0,0,0,0,3,len)
+    
+    local vc=vt:matmul(o2clipMat)
+    --print(pod(vt:row(1)))
     local z = vc:column(2)
     local inv_z = 1/z--get 1/z
     vc:mul(inv_z,true,0,0,1,1,3,len)
@@ -238,7 +241,7 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
         return
     end
     local o2wMat = UpdateO2WMat(position,scale,quat)
-    local o2clipMat = o2wMat.matmul3d(w2clipMat)
+    local o2clipMat = o2wMat:matmul3d(w2clipMat)
     local vc,zTable = VecList2Screen(mObj.vector,o2clipMat)
     --copy vc to the global vector buffer
     vc:blit(vecBuff,0,0,0,currentBufferedVec,3,veclen)
@@ -247,7 +250,7 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
     local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
     local winding
     local z,z0,z1,z2
-    for i in 0,trilen-1 do
+    for i = 0,trilen-1 do
         idx0,idx1,idx2=mObj.tri:get(0,i,3)
         
         x0,y0=vc:get(0,idx0,2)
@@ -261,7 +264,7 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
         if (winding<=0.0) or z0 < NEAR_PLANE or z1 < NEAR_PLANE or z2 < NEAR_PLANE then
             --do nothing
         else
-            u0,v0,u1,v1,u2,v2 = mObj.uv:get(0,i*3,6)
+            u0,v0,u1,v1,u2,v2 = mObj.tex:get(0,i,6)
             idx0 +=currentBufferedVec 
             idx1 +=currentBufferedVec 
             idx2 +=currentBufferedVec 
@@ -272,10 +275,10 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
     currentBufferedVec += veclen
 end
 
-function DrawTriList(triList)
+function DrawTriList()
     triBuff:sort()
     for i = 0,currentBufferedTri do
-        sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = triBuff:get(1,i,10)
+        local sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = triBuff:get(1,i,10)
 
         RasterizeTri(sprite_idx,vecBuff:row(idx0),vecBuff:row(idx1),vecBuff:row(idx2),u0,v0,u1,v1,u2,v2) 
     end
@@ -291,6 +294,7 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     local s
     if (y0<0) then
         s=-y0
+        y0=0
     else
         s=ceil(y0)-y0
     end
