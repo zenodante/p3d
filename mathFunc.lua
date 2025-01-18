@@ -325,7 +325,7 @@ end
 
 
 
-function O2WMat(position,scale,quat)
+function UpdateO2WMat(position,scale,quat)
     local resultm34 = quat:Matrix(4) --create 3*4 matrix
     resultm34:mul(scale.x,true,0,0,3)--apply the x,y,z scale  
     resultm34:mul(scale.y,true,0,3,3)

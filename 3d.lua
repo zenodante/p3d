@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 06:44:33",revision=10]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-17 20:51:15",revision=11]]
 
 --Left hand coordination, row vector, right mult matrix
 --config area
@@ -7,9 +7,15 @@ local DRAW_WINDOW_WIDTH =480
 local DRAW_WINDOW_HEIGHT = 270
 local HALF_X = DRAW_WINDOW_WIDTH//2
 local HALF_Y = DRAW_WINDOW_HEIGHT//2
+local NEAR_PLANE = 0.1
 local MAX_TRI = 1000
+local MAX_VEC = 1000
 --end of config
-local currentFreeTriIndx = 0
+local currentBufferedVec = 0
+local currentBufferedTri = 0
+
+local vecBuff = userdata("f64",3,MAX_VEC)
+local triBuff = userdata("f64",12,MAX_TRI)
 local ud = userdata("f64",12,270)
 
 include("mathFunc.lua")
@@ -82,11 +88,11 @@ Render.__index = Render
 
 function Render:new()
     local instance = setmetatable({},Render)
-    instance:init()
+    instance:Init()
     return instance
 end
 
-function Render:init()
+function Render:Init()
     self.camera = Camera:new(FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
 end
 
@@ -97,7 +103,7 @@ Camera.__index = Camera
 
 function Camera:new(focusLength,position,quat)
     local instance = setmetatable({},Camera)
-    instance:init(focusLength,position,quat)
+    instance:Init(focusLength,position,quat)
     return instance
 
 end
@@ -109,7 +115,7 @@ function Camera:__tostring()
     return string.format("[Camposition x=%.2f, y=%.2f, z=%.2f]\n[Eulerangle x=%.2f, y=%.2f, z=%.2f]\n[FocusLength %.2f AspectRatio %.2f]", x, y, z,ex,ey,ez,self._focusLength,self._aspectRatio)
 end
 
-function Camera:init(focusLength,position,quat)
+function Camera:Init(focusLength,position,quat)
     self._pos = position or vec(1,1,1)
     self._quat = quat or Quat(0,0,0,1)
     self._focusLength = focusLength or 1 
@@ -200,18 +206,80 @@ function Camera:LookAt(target_v,up_v)
 end
 
 
-function Vec2Screen(v)
-	local z = v:column(2)--get z column
-	local inv_z = 1/z--get 1/z
-	v:mul(inv_z,true,0,0,1,1,3,len)
-	v:mul(inv_z,true,0,1,1,1,3,len)
-	v:add(vec(1.0,-1.0),true,0,0,2,0,3,len)
-	v:mul(vec(HALF_X,-HALF_Y),true,0,0,2,0,3,len)
-
-	inv_z:blit(v,0,0,2,0,1,len)--copy 1/z to the vec
-    return v,z
+function VecList2Screen(v,o2clipMat)
+    local len = v:height()
+    local vc = userdata("f64",4,len)   
+    vc:add(1,true)
+    v:blit(vc,0,0,0,0,3,len)
+    vc=vc:matmul(o2clipMat)
+    local z = vc:column(2)
+    local inv_z = 1/z--get 1/z
+    vc:mul(inv_z,true,0,0,1,1,3,len)
+	vc:mul(inv_z,true,0,1,1,1,3,len)
+    vc:add(vec(1.0,-1.0),true,0,0,2,0,3,len)
+    vc:mul(vec(HALF_X,-HALF_Y),true,0,0,2,0,3,len)
+    inv_z:blit(vc,0,0,2,0,1,len)
+    return vc,z
 end
 
+function ResetTriBuff()
+    --reset the z value
+    --reset the indx
+    currentBufferedVec = 0
+    currentBufferedTri = 0
+    triBuff:mul(0,true,0,0,1,0,12,MAX_TRI)
+end
+
+function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
+    local veclen = mObj.vector:height()
+    local sprite_idx = mObj.uvmapIdx
+    if veclen + currentBufferedVec > MAX_VEC then
+        print("out of vec buff!")
+        return
+    end
+    local o2wMat = UpdateO2WMat(position,scale,quat)
+    local o2clipMat = o2wMat.matmul3d(w2clipMat)
+    local vc,zTable = VecList2Screen(mObj.vector,o2clipMat)
+    --copy vc to the global vector buffer
+    vc:blit(vecBuff,0,0,0,currentBufferedVec,3,veclen)
+    local trilen  = mObj.tri:height()
+    local x0,y0,x1,y1,x2,y2
+    local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
+    local winding
+    local z,z0,z1,z2
+    for i in 0,trilen-1 do
+        idx0,idx1,idx2=mObj.tri:get(0,i,3)
+        
+        x0,y0=vc:get(0,idx0,2)
+        x1,y1=vc:get(0,idx1,2)
+        x2,y2=vc:get(0,idx2,2)
+        winding = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
+        z0=zTable[idx0]
+        z1=zTable[idx1]
+        z2=zTable[idx2]
+        z = z0+z1+z2
+        if (winding<=0.0) or z0 < NEAR_PLANE or z1 < NEAR_PLANE or z2 < NEAR_PLANE then
+            --do nothing
+        else
+            u0,v0,u1,v1,u2,v2 = mObj.uv:get(0,i*3,6)
+            idx0 +=currentBufferedVec 
+            idx1 +=currentBufferedVec 
+            idx2 +=currentBufferedVec 
+            triBuff:set(0,currentBufferedTri,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,0)
+            currentBufferedTri +=1
+        end
+    end
+    currentBufferedVec += veclen
+end
+
+function DrawTriList(triList)
+    triBuff:sort()
+    for i = 0,currentBufferedTri do
+        sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = triBuff:get(1,i,10)
+
+        RasterizeTri(sprite_idx,vecBuff:row(idx0),vecBuff:row(idx1),vecBuff:row(idx2),u0,v0,u1,v1,u2,v2) 
+    end
+end
 --*************************Draw**************************
 
 function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,rinvW,ltinvW,rtinvW)
@@ -247,16 +315,16 @@ end
 
  
 
-function RasterizeTri(sprite_idx,vec0,vec1,vec2,uv0,uv1,uv2)  
-    if(vec0.y > vec1.y) then vec0,vec1=vec1,vec0 uv0,uv1 = uv1,uv0 end
-    if(vec0.y > vec2.y) then vec0,vec2=vec2,vec0 uv0,uv2 = uv2,uv0 end
-    if(vec1.y > vec2.y) then vec1,vec2=vec2,vec1 uv1,uv2 = uv2,uv1 end  
+function RasterizeTri(sprite_idx,vec0,vec1,vec2,u0,v0,u1,v1,u2,v2)  
+    if(vec0.y > vec1.y) then vec0,vec1=vec1,vec0 u0,v0,u1,v1 = u1,v1,u0,v0 end
+    if(vec0.y > vec2.y) then vec0,vec2=vec2,vec0 u0,v0,u2,v2 = u2,v2,u0,v0 end
+    if(vec1.y > vec2.y) then vec1,vec2=vec2,vec1 u1,v1,u2,v2 = u2,v2,u1,v1 end  
     local x0,x1,x2=vec0.x,vec1.x,vec2.x
     local y0,y1,y2=vec0.y,vec1.y,vec2.y
     if (y0 >=  DRAW_WINDOW_HEIGHT) or (y2 <0) then return end
     local inv_w0,inv_w1,inv_w2=vec0[2],vec1[2],vec2[2]
-    local u0,u1,u2=uv0[0]*inv_w0,uv1[0]*inv_w1,uv2[0]*inv_w2
-    local v0,v1,v2=uv0[1]*inv_w0,uv1[1]*inv_w1,uv2[1]*inv_w2
+    u0,u1,u2=u0*inv_w0,u1*inv_w1,u2*inv_w2
+    v0,v1,v2=v0*inv_w0,v1*inv_w1,v2*inv_w2
     local fact = (y1-y0)/(y2-y0)
     local x3 = x0+(x2-x0)*fact
     local u3 = u0+(u2-u0)*fact
