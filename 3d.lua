@@ -301,8 +301,8 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     l,r,lu,lv,ru,rv,linvW,rinvW=l+s*ldx,r+s*rdx,lu+s*ldu,lv+s*ldv,ru+s*rdu,rv+s*rdv,linvW+s*ldinvW,rinvW+s*rdinvW
     y1=min(y1,DRAW_WINDOW_HEIGHT)
     local len=ceil(y1)-ceil(y0)
-    if(len<=0) then return end    
-    local lm1=len-1
+    if(len<=0) then return end   
+    local lm1=len
     lt=l+lm1*ldx
     rt=r+lm1*rdx
     lut=lu+lm1*ldu
@@ -311,10 +311,11 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     rvt=rv+lm1*rdv
     ltinvW=linvW+lm1*ldinvW
     rtinvW=rinvW+lm1*rdinvW
-    --local ud=userdata("f64",12,len)
+        --local ud=userdata("f64",12,len)
     ud:set(0,0    ,sprite_idx,l ,ceil(y0)  ,r ,ceil(y0)  ,lu ,lv ,ru ,rv ,linvW,rinvW,0x300)  
-    ud:set(0,len-1,sprite_idx,lt,ceil(y1)-1,rt,ceil(y1)-1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
-    tline3d(ud:lerp(0,len-1,12,12,1),0,len,12,12)
+    ud:set(0,len,sprite_idx,lt,ceil(y1),rt,ceil(y1),lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
+    tline3d(ud:lerp(0,len,12,12,1),0,len,12,12)
+
 end
 
  
