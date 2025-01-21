@@ -208,13 +208,12 @@ end
 
 function VecList2Screen(v,o2clipMat)
     local len = v:height()
-    local vt = userdata("f64",4,len)   
-    vt:add(1,true,0,3,1,0,4,len)
-    
-    v:blit(vt,0,0,0,0,3,len)
-    
-    local vc=vt:matmul(o2clipMat)
-    --print(pod(vt:row(1)))
+    local o2clipMat33 = userdata("f64",3,3)
+    local o2clipxyz = userdata("f64",3,1)
+    o2clipMat:blit(o2clipMat33,0,0,0,0,3,3)
+    o2clipMat:blit(o2clipxyz,0,3,0,0,3,1)
+    local vc=v:matmul(o2clipMat33)
+    vc:add(o2clipxyz,true,0,0,3,0,3,len)
     local z = vc:column(2)
     local inv_z = 1/z--get 1/z
     vc:mul(inv_z,true,0,0,1,1,3,len)
@@ -300,7 +299,9 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     end
     l,r,lu,lv,ru,rv,linvW,rinvW=l+s*ldx,r+s*rdx,lu+s*ldu,lv+s*ldv,ru+s*rdu,rv+s*rdv,linvW+s*ldinvW,rinvW+s*rdinvW
     y1=min(y1,DRAW_WINDOW_HEIGHT)
-    local len=ceil(y1)-ceil(y0)
+    local cy0=ceil(y0)
+    local cy1=ceil(y1)
+    local len=cy1-cy0
     if(len<=0) then return end   
     local lm1=len
     lt=l+lm1*ldx
@@ -312,8 +313,8 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     ltinvW=linvW+lm1*ldinvW
     rtinvW=rinvW+lm1*rdinvW
         --local ud=userdata("f64",12,len)
-    ud:set(0,0    ,sprite_idx,l ,ceil(y0)  ,r ,ceil(y0)  ,lu ,lv ,ru ,rv ,linvW,rinvW,0x300)  
-    ud:set(0,len,sprite_idx,lt,ceil(y1),rt,ceil(y1),lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
+    ud:set(0,0    ,sprite_idx,l ,cy0  ,r ,cy0  ,lu ,lv ,ru ,rv ,linvW,rinvW,0x300)  
+    ud:set(0,len,sprite_idx,lt,cy1,rt,cy1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
     tline3d(ud:lerp(0,len,12,12,1),0,len,12,12)
 
 end
