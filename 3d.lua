@@ -11,8 +11,8 @@ local NEAR_PLANE = 0.1
 local MAX_TRI = 1000
 local MAX_VEC = 1000
 --end of config
-local currentBufferedVec = 0
-local currentBufferedTri = 0
+local nextBufferedVec = 0
+local nextBufferedTri = 0
 
 local vecBuff = userdata("f64",3,MAX_VEC)
 local triBuff = userdata("f64",12,MAX_TRI)
@@ -227,15 +227,16 @@ end
 function ResetTriBuff()
     --reset the z value
     --reset the indx
-    currentBufferedVec = 0
-    currentBufferedTri = 0
-    triBuff:mul(0,true,0,0,1,0,12,MAX_TRI)
+    nextBufferedVec = 0
+    nextBufferedTri = 0
+    triBuff = userdata("f64",12,MAX_TRI)
+    
 end
 
 function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
     local veclen = mObj.vector:height()
     local sprite_idx = mObj.uvmapIdx
-    if veclen + currentBufferedVec > MAX_VEC then
+    if veclen + nextBufferedVec > MAX_VEC then
         print("out of vec buff!")
         return
     end
@@ -243,7 +244,7 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
     local o2clipMat = o2wMat:matmul3d(w2clipMat)
     local vc,zTable = VecList2Screen(mObj.vector,o2clipMat)
     --copy vc to the global vector buffer
-    vc:blit(vecBuff,0,0,0,currentBufferedVec,3,veclen)
+    vc:blit(vecBuff,0,0,0,nextBufferedVec,3,veclen)
     local trilen  = mObj.tri:height()
     local x0,y0,x1,y1,x2,y2
     local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
@@ -264,21 +265,25 @@ function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
             --do nothing
         else
             u0,v0,u1,v1,u2,v2 = mObj.tex:get(0,i,6)
-            idx0 +=currentBufferedVec 
-            idx1 +=currentBufferedVec 
-            idx2 +=currentBufferedVec 
-            triBuff:set(0,currentBufferedTri,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,0)
-            currentBufferedTri +=1
+            idx0 +=nextBufferedVec 
+            idx1 +=nextBufferedVec 
+            idx2 +=nextBufferedVec 
+            triBuff:set(0,nextBufferedTri,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,0)
+            nextBufferedTri +=1
         end
     end
-    currentBufferedVec += veclen
+    nextBufferedVec += veclen
 end
 
 function DrawTriList()
-    triBuff:sort()
-    for i = 0,currentBufferedTri do
-        local sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = triBuff:get(1,i,10)
+    local sortBuff = userdata("f64",12,nextBufferedTri-1)
+    triBuff:blit(sortBuff,0,0,0,0,12,nextBufferedTri-1)
+    sortBuff:sort(0)
+    --print(pod(sortBuff:row(0)))
+    --print(pod(sortBuff:row(nextBufferedTri-2)))
+    for i = 0,nextBufferedTri-2 do
 
+        local sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = sortBuff:get(1,nextBufferedTri-2-i,10)
         RasterizeTri(sprite_idx,vecBuff:row(idx0),vecBuff:row(idx1),vecBuff:row(idx2),u0,v0,u1,v1,u2,v2) 
     end
 end
