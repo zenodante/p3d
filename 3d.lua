@@ -317,8 +317,7 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     rvt=rv+lm1*rdv
     ltinvW=linvW+lm1*ldinvW
     rtinvW=rinvW+lm1*rdinvW
-        --local ud=userdata("f64",12,len)
-    ud:set(0,0    ,sprite_idx,l ,cy0  ,r ,cy0  ,lu ,lv ,ru ,rv ,linvW,rinvW,0x300)  
+    ud:set(0,0  ,sprite_idx,l ,cy0,r ,cy0,lu ,lv ,ru ,rv ,linvW ,rinvW ,0x300)  
     ud:set(0,len,sprite_idx,lt,cy1,rt,cy1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
     tline3d(ud:lerp(0,len,12,12,1),0,len,12,12)
 
