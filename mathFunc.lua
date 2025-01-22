@@ -1,4 +1,17 @@
 --[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-22 01:14:26",revision=10]]
+--note
+--A:add(B, true, 0, 0, 4,  0, 16, 10000)
+-- B, source
+-- true: to self, nail, to other, or name of other
+--0,B source shift
+--0 A result shift
+--4 length
+--0 source shift after each time op
+--16 target op shift
+--10000 times
+
+
+
 include "config.lua"
 local DRAW_WINDOW_WIDTH = settings["DRAW_WINDOW_WIDTH"]
 local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]

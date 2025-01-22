@@ -2,14 +2,13 @@
 
 --Left hand coordination, row vector, right mult matrix
 --config area
-local FOCUS_LENGTH = 1
-local DRAW_WINDOW_WIDTH =480
-local DRAW_WINDOW_HEIGHT = 270
+local DEFAULT_FOCUS_LENGTH = 1
+
 
 
 --end of config
-local nextBufferedVec = 0
-local nextBufferedTri = 0
+
+
 
 local vecBuff = userdata("f64",3,MAX_VEC)
 local triBuff = userdata("f64",12,MAX_TRI)
@@ -17,41 +16,22 @@ local triBuff = userdata("f64",12,MAX_TRI)
 
 include "mathFunc.lua"
 include "drawFuncs.lua"
--- basic functions
-
-function Class(base)
-    local cls = base or {}
-    cls.__index = cls
-
-    function cls:new(o, ...)
-        o = o or {}
-        setmetatable(o, self)
-        if self.init then
-            self:init(...)
-        end
-        return o
-    end
-
-    return cls
-end
+include "config.lua"
+local DRAW_WINDOW_WIDTH = settings["DRAW_WINDOW_WIDTH"]
+local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
 
 
 
 
 
---************************* Math **************************
---A:add(B, true, 0, 0, 4,  0, 16, 10000)
--- B, source
--- true: to self, nail, to other, or name of other
---0,B source shift
---0 A result shift
---4 length
---0 source shift after each time op
---16 target op shift
---10000 times
+--Obj types:
+--[1] Mesh obj with Texture
+--[2] Scaled 2d map (no rotation)
 
 
-
+--Draw obj types:
+--[1] 3d triangle with texture
+--[2] Scaled 2d map (no rotation)
 
 
 
@@ -73,9 +53,9 @@ end
 
 function DrawableObj:init(position,scale,quat)
 
-    self._position = position or vec(0,0,0)
-    self._scale = scale or vec(1,1,1)
-    self._quat = quat or Quat(0,0,0,1)
+    self.position = position or vec(0,0,0)
+    self.scale = scale or vec(1,1,1)
+    self.quat = quat or Quat(0,0,0,1)
 end
 
 --*************************Render**************************
@@ -94,7 +74,7 @@ function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
     self.nearPlane = nearPlane or 0.1
     self.max_drawItemNum = max_drawItemNum or 1000
     self.max_vecNum = max_vecNum or 1000
-    self.camera = Camera:new(FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
+    self.camera = Camera:new(DEFAULT_FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
     self.objTab = {}
     self.drawFuncs = drawFuncTable or drawFuncs
     self.nextBufferedDrawItem = 0
@@ -191,9 +171,9 @@ function Render:TextureMeshObjToDraw(o)
             --do nothing
         else
             u0,v0,u1,v1,u2,v2 = mesh.tex:get(0,i,6)
-            idx0 +=nextBufferedVec 
-            idx1 +=nextBufferedVec 
-            idx2 +=nextBufferedVec 
+            idx0 +=self.nextBufferedVec 
+            idx1 +=self.nextBufferedVec 
+            idx2 +=self.nextBufferedVec
             self.drawBuff:set(0,self.nextBufferedDrawItem,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,1)
             self.nextBufferedDrawItem +=1
         end
