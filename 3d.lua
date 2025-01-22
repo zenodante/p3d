@@ -1,25 +1,22 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-18 05:32:36",revision=26]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-22 06:27:19",revision=38]]
 
 --Left hand coordination, row vector, right mult matrix
 --config area
 local FOCUS_LENGTH = 1
 local DRAW_WINDOW_WIDTH =480
 local DRAW_WINDOW_HEIGHT = 270
-local HALF_X = DRAW_WINDOW_WIDTH//2
-local HALF_Y = DRAW_WINDOW_HEIGHT//2
-local NEAR_PLANE = 0.1
-local MAX_TRI = 1000
-local MAX_VEC = 1000
+
+
 --end of config
 local nextBufferedVec = 0
 local nextBufferedTri = 0
 
 local vecBuff = userdata("f64",3,MAX_VEC)
 local triBuff = userdata("f64",12,MAX_TRI)
-local ud = userdata("f64",12,270)
 
-include("mathFunc.lua")
 
+include "mathFunc.lua"
+include "drawFuncs.lua"
 -- basic functions
 
 function Class(base)
@@ -83,20 +80,126 @@ end
 
 --*************************Render**************************
 
+
 Render = {}
 Render.__index = Render
 
-function Render:new()
+function Render:new(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
     local instance = setmetatable({},Render)
-    instance:Init()
+    instance:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
     return instance
 end
 
-function Render:Init()
+function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
+    self.nearPlane = nearPlane or 0.1
+    self.max_drawItemNum = max_drawItemNum or 1000
+    self.max_vecNum = max_vecNum or 1000
     self.camera = Camera:new(FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
+    self.objTab = {}
+    self.drawFuncs = drawFuncTable or drawFuncs
+    self.nextBufferedDrawItem = 0
+    self.nextBufferedVec = 0
+    self.drawBuff = userdata("f64",12,self.max_drawItemNum)
+    self.vecBuff = userdata("f64",3,self.max_vecNum)
+    self.processObjFuncs = {
+        [1] = self.TextureMeshObjToDraw
+    }
+    
 end
 
+function Render:ResetDrawBuff()
+    self.nextBufferedVec = 0
+    self.nextBufferedDrawItem = 0
+    self.drawBuff = userdata("f64",12,self.max_drawItemNum)
+    
+end
 
+function Render:RenderObjs()
+    self:ResetDrawBuff()
+    --print(#self.objTab)
+    for i = 1, #self.objTab do
+        local o = self.objTab[i]
+        local objType = o.objType 
+        self.processObjFuncs[objType](self,o)
+        --depends on obj type, call different process and check to add to draw table
+    end
+    --finished the draw table, then draw it
+    self:Draw()
+end
+
+function Render:Draw()
+    local num = self.nextBufferedDrawItem- 1
+    local sortBuff = userdata("f64",12,num)
+    self.drawBuff:blit(sortBuff,0,0,0,0,12,num)
+    --print(#self.drawFuncs)
+    sortBuff:sort(0)
+    for i = 0,num-1 do
+        local objType = sortBuff:get(11,num-1-i,1)
+        local record = sortBuff:row(num-1-i)
+        
+        self.drawFuncs[objType](record,self.vecBuff) 
+    end
+end
+
+function Render:AddObjToDrawTable(o)
+    table.insert(self.objTab,o)
+end
+
+function Render:PopObjFromDrawTable()
+
+end
+
+function Render:CleanDrawTable()
+
+end
+
+function Render:TextureMeshObjToDraw(o)
+    local np = self.nearPlane
+    local mesh = o.mesh
+    local position = o.position
+    local scale  = o.scale
+    local quat = o.quat
+    local W2ClipMat = self.camera.W2ClipMat
+    local veclen = mesh.vector:height()
+    local sprite_idx = mesh.uvmapIdx
+    if veclen + self.nextBufferedVec > self.max_vecNum then
+        print("out of vec buff!")
+        return
+    end
+    local o2wMat = UpdateO2WMat(position,scale,quat)
+    local o2clipMat = o2wMat:matmul3d(W2ClipMat)
+    local vc,zTable = VecList2Screen(mesh.vector,o2clipMat)
+    --copy vc to the global vector buffer
+    vc:blit(self.vecBuff,0,0,0,self.nextBufferedVec,3,veclen)
+    local trilen  = mesh.tri:height()
+    local x0,y0,x1,y1,x2,y2
+    local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
+    local winding
+    local z,z0,z1,z2
+    for i = 0,trilen-1 do
+        idx0,idx1,idx2=mesh.tri:get(0,i,3)
+        
+        x0,y0=vc:get(0,idx0,2)
+        x1,y1=vc:get(0,idx1,2)
+        x2,y2=vc:get(0,idx2,2)
+        winding = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
+        z0=zTable[idx0]
+        z1=zTable[idx1]
+        z2=zTable[idx2]
+        z = z0+z1+z2
+        if (winding<=0.0) or z0 < np or z1 < np or z2 < np then
+            --do nothing
+        else
+            u0,v0,u1,v1,u2,v2 = mesh.tex:get(0,i,6)
+            idx0 +=nextBufferedVec 
+            idx1 +=nextBufferedVec 
+            idx2 +=nextBufferedVec 
+            self.drawBuff:set(0,self.nextBufferedDrawItem,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,1)
+            self.nextBufferedDrawItem +=1
+        end
+    end
+    self.nextBufferedVec += veclen
+end
 --*************************Camera**************************
 Camera = {}
 Camera.__index = Camera
@@ -206,149 +309,17 @@ function Camera:LookAt(target_v,up_v)
 end
 
 
-function VecList2Screen(v,o2clipMat)
-    local len = v:height()
-    local o2clipMat33 = userdata("f64",3,3)
-    local o2clipxyz = userdata("f64",3,1)
-    o2clipMat:blit(o2clipMat33,0,0,0,0,3,3)
-    o2clipMat:blit(o2clipxyz,0,3,0,0,3,1)
-    local vc=v:matmul(o2clipMat33)
-    vc:add(o2clipxyz,true,0,0,3,0,3,len)
-    local z = vc:column(2)
-    local inv_z = 1/z--get 1/z
-    vc:mul(inv_z,true,0,0,1,1,3,len)
-	vc:mul(inv_z,true,0,1,1,1,3,len)
-    vc:add(vec(1.0,-1.0),true,0,0,2,0,3,len)
-    vc:mul(vec(HALF_X,-HALF_Y),true,0,0,2,0,3,len)
-    inv_z:blit(vc,0,0,2,0,1,len)
-    return vc,z
-end
 
-function ResetTriBuff()
-    --reset the z value
-    --reset the indx
-    nextBufferedVec = 0
-    nextBufferedTri = 0
-    triBuff = userdata("f64",12,MAX_TRI)
-    
-end
 
-function AddMeshObjToDraw(mObj,position,scale,quat,w2clipMat)
-    local veclen = mObj.vector:height()
-    local sprite_idx = mObj.uvmapIdx
-    if veclen + nextBufferedVec > MAX_VEC then
-        print("out of vec buff!")
-        return
-    end
-    local o2wMat = UpdateO2WMat(position,scale,quat)
-    local o2clipMat = o2wMat:matmul3d(w2clipMat)
-    local vc,zTable = VecList2Screen(mObj.vector,o2clipMat)
-    --copy vc to the global vector buffer
-    vc:blit(vecBuff,0,0,0,nextBufferedVec,3,veclen)
-    local trilen  = mObj.tri:height()
-    local x0,y0,x1,y1,x2,y2
-    local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
-    local winding
-    local z,z0,z1,z2
-    for i = 0,trilen-1 do
-        idx0,idx1,idx2=mObj.tri:get(0,i,3)
-        
-        x0,y0=vc:get(0,idx0,2)
-        x1,y1=vc:get(0,idx1,2)
-        x2,y2=vc:get(0,idx2,2)
-        winding = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
-        z0=zTable[idx0]
-        z1=zTable[idx1]
-        z2=zTable[idx2]
-        z = z0+z1+z2
-        if (winding<=0.0) or z0 < NEAR_PLANE or z1 < NEAR_PLANE or z2 < NEAR_PLANE then
-            --do nothing
-        else
-            u0,v0,u1,v1,u2,v2 = mObj.tex:get(0,i,6)
-            idx0 +=nextBufferedVec 
-            idx1 +=nextBufferedVec 
-            idx2 +=nextBufferedVec 
-            triBuff:set(0,nextBufferedTri,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,0)
-            nextBufferedTri +=1
-        end
-    end
-    nextBufferedVec += veclen
-end
 
-function DrawTriList()
-    local sortBuff = userdata("f64",12,nextBufferedTri-1)
-    triBuff:blit(sortBuff,0,0,0,0,12,nextBufferedTri-1)
-    sortBuff:sort(0)
-    --print(pod(sortBuff:row(0)))
-    --print(pod(sortBuff:row(nextBufferedTri-2)))
-    for i = 0,nextBufferedTri-2 do
 
-        local sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2 = sortBuff:get(1,nextBufferedTri-2-i,10)
-        RasterizeTri(sprite_idx,vecBuff:row(idx0),vecBuff:row(idx1),vecBuff:row(idx2),u0,v0,u1,v1,u2,v2) 
-    end
-end
---*************************Draw**************************
 
-function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,rinvW,ltinvW,rtinvW)
-    local dy=y1-y0
-    local ldx,rdx=(lt-l)/dy,(rt-r)/dy
-    local ldu,ldv=(lut-lu)/dy,(lvt-lv)/dy
-    local rdu,rdv=(rut-ru)/dy,(rvt-rv)/dy
-    local ldinvW,rdinvW = (ltinvW-linvW)/dy, (rtinvW-rinvW)/dy
-    local s
-    if (y0<0) then
-        s=-y0
-        y0=0
-    else
-        s=ceil(y0)-y0
-    end
-    l,r,lu,lv,ru,rv,linvW,rinvW=l+s*ldx,r+s*rdx,lu+s*ldu,lv+s*ldv,ru+s*rdu,rv+s*rdv,linvW+s*ldinvW,rinvW+s*rdinvW
-    y1=min(y1,DRAW_WINDOW_HEIGHT)
-    local cy0=ceil(y0)
-    local cy1=ceil(y1)
-    local len=cy1-cy0
-    if(len<=0) then return end   
-    local lm1=len
-    lt=l+lm1*ldx
-    rt=r+lm1*rdx
-    lut=lu+lm1*ldu
-    lvt=lv+lm1*ldv
-    rut=ru+lm1*rdu
-    rvt=rv+lm1*rdv
-    ltinvW=linvW+lm1*ldinvW
-    rtinvW=rinvW+lm1*rdinvW
-    ud:set(0,0  ,sprite_idx,l ,cy0,r ,cy0,lu ,lv ,ru ,rv ,linvW ,rinvW ,0x300)  
-    ud:set(0,len,sprite_idx,lt,cy1,rt,cy1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
-    tline3d(ud:lerp(0,len,12,12,1),0,len,12,12)
 
-end
 
- 
 
-function RasterizeTri(sprite_idx,vec0,vec1,vec2,u0,v0,u1,v1,u2,v2)  
-    if(vec0.y > vec1.y) then vec0,vec1=vec1,vec0 u0,v0,u1,v1 = u1,v1,u0,v0 end
-    if(vec0.y > vec2.y) then vec0,vec2=vec2,vec0 u0,v0,u2,v2 = u2,v2,u0,v0 end
-    if(vec1.y > vec2.y) then vec1,vec2=vec2,vec1 u1,v1,u2,v2 = u2,v2,u1,v1 end  
-    local x0,x1,x2=vec0.x,vec1.x,vec2.x
-    local y0,y1,y2=vec0.y,vec1.y,vec2.y
-    if (y0 >=  DRAW_WINDOW_HEIGHT) or (y2 <0) then return end
-    local inv_w0,inv_w1,inv_w2=vec0[2],vec1[2],vec2[2]
-    u0,u1,u2=u0*inv_w0,u1*inv_w1,u2*inv_w2
-    v0,v1,v2=v0*inv_w0,v1*inv_w1,v2*inv_w2
-    local fact = (y1-y0)/(y2-y0)
-    local x3 = x0+(x2-x0)*fact
-    local u3 = u0+(u2-u0)*fact
-    local v3 = v0+(v2-v0)*fact
-    local inv_w3 = inv_w0+(inv_w2-inv_w0)*fact 
-    RastHalf(sprite_idx,
-            x0,x0,x1,x3,
-            u0,v0,u0,v0,
-            u1,v1,u3,v3,y0,y1,
-            inv_w0,inv_w0,inv_w1,inv_w3)
-    RastHalf(sprite_idx,
-            x1,x3,x2,x2,
-            u1,v1,u3,v3,
-            u2,v2,u2,v2,y1,y2,
-            inv_w1,inv_w3,inv_w2,inv_w2)
-end
+
+
+
+
+
 

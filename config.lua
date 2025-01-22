@@ -1,0 +1,4 @@
+settings = {
+    DRAW_WINDOW_WIDTH =480,
+    DRAW_WINDOW_HEIGHT = 270
+}

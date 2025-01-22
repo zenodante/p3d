@@ -1,4 +1,9 @@
---[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-17 06:38:37",revision=8]]
+--[[pod_format="raw",created="2025-01-17 05:38:05",modified="2025-01-22 01:14:26",revision=10]]
+include "config.lua"
+local DRAW_WINDOW_WIDTH = settings["DRAW_WINDOW_WIDTH"]
+local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
+local HALF_X = DRAW_WINDOW_WIDTH//2
+local HALF_Y = DRAW_WINDOW_HEIGHT//2
 
 function sin_n(n)
    return -sin(n) 
@@ -332,5 +337,23 @@ function UpdateO2WMat(position,scale,quat)
     resultm34:mul(scale.z,true,0,6,3)
     position:blit(resultm34,0,0,0,3,3,1)
     return resultm34
+end
+
+function VecList2Screen(v,o2clipMat)
+    local len = v:height()
+    local o2clipMat33 = userdata("f64",3,3)
+    local o2clipxyz = userdata("f64",3,1)
+    o2clipMat:blit(o2clipMat33,0,0,0,0,3,3)
+    o2clipMat:blit(o2clipxyz,0,3,0,0,3,1)
+    local vc=v:matmul(o2clipMat33)
+    vc:add(o2clipxyz,true,0,0,3,0,3,len)
+    local z = vc:column(2)
+    local inv_z = 1/z--get 1/z
+    vc:mul(inv_z,true,0,0,1,1,3,len)
+	vc:mul(inv_z,true,0,1,1,1,3,len)
+    vc:add(vec(1.0,-1.0),true,0,0,2,0,3,len)
+    vc:mul(vec(HALF_X,-HALF_Y),true,0,0,2,0,3,len)
+    inv_z:blit(vc,0,0,2,0,1,len)
+    return vc,z
 end
 
