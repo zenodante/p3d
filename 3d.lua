@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-22 06:27:19",revision=38]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-22 16:11:56",revision=39]]
 
 --Left hand coordination, row vector, right mult matrix
 --config area
@@ -11,7 +11,7 @@ local DEFAULT_FOCUS_LENGTH = 1
 
 
 local vecBuff = userdata("f64",3,MAX_VEC)
-local triBuff = userdata("f64",12,MAX_TRI)
+local triBuff = userdata("f64",13,MAX_TRI)
 
 
 include "mathFunc.lua"
@@ -45,19 +45,28 @@ local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
 --*************************Obj**************************
 DrawableObj ={}
 DrawableObj.__index = DrawableObj
-function DrawableObj:new(position,scale,quat)
+function DrawableObj:new(objType,position,scale,quat,optionalResourceTable)
     local instance = setmetatable({},DrawableObj)
-    instance:init(position,scale,quat)
+    instance:Init(objType,position,scale,quat,optionalResourceTable)
     return instance
 end
 
-function DrawableObj:init(position,scale,quat)
-
+function DrawableObj:Init(objType,position,scale,quat,optionalResourceTable)
+    self.objType = objType  or 1
     self.position = position or vec(0,0,0)
     self.scale = scale or vec(1,1,1)
     self.quat = quat or Quat(0,0,0,1)
+    if type(optionalResourceTable) == "table" then
+        for key, value in pairs(optionalResourceTable) do
+            self[key] = value
+        end
+    end
 end
-
+setmetatable(DrawableObj, {
+    __call = function(_, ...)
+        return DrawableObj:new(...)
+    end,
+})
 --*************************Render**************************
 
 
@@ -79,7 +88,7 @@ function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
     self.drawFuncs = drawFuncTable or drawFuncs
     self.nextBufferedDrawItem = 0
     self.nextBufferedVec = 0
-    self.drawBuff = userdata("f64",12,self.max_drawItemNum)
+    self.drawBuff = userdata("f64",13,self.max_drawItemNum)
     self.vecBuff = userdata("f64",3,self.max_vecNum)
     self.processObjFuncs = {
         [1] = self.TextureMeshObjToDraw
@@ -90,7 +99,7 @@ end
 function Render:ResetDrawBuff()
     self.nextBufferedVec = 0
     self.nextBufferedDrawItem = 0
-    self.drawBuff = userdata("f64",12,self.max_drawItemNum)
+    self.drawBuff = userdata("f64",13,self.max_drawItemNum)
     
 end
 
@@ -108,15 +117,17 @@ function Render:RenderObjs()
 end
 
 function Render:Draw()
-    local num = self.nextBufferedDrawItem- 1
-    local sortBuff = userdata("f64",12,num)
-    self.drawBuff:blit(sortBuff,0,0,0,0,12,num)
+    local num = self.nextBufferedDrawItem
+    if num == 0 then
+        return
+    end
+    local sortBuff = userdata("f64",13,num)
+    self.drawBuff:blit(sortBuff,0,0,0,0,13,num)
     --print(#self.drawFuncs)
     sortBuff:sort(0)
     for i = 0,num-1 do
-        local objType = sortBuff:get(11,num-1-i,1)
+        local objType = sortBuff:get(1,num-1-i,1)
         local record = sortBuff:row(num-1-i)
-        
         self.drawFuncs[objType](record,self.vecBuff) 
     end
 end
@@ -174,7 +185,7 @@ function Render:TextureMeshObjToDraw(o)
             idx0 +=self.nextBufferedVec 
             idx1 +=self.nextBufferedVec 
             idx2 +=self.nextBufferedVec
-            self.drawBuff:set(0,self.nextBufferedDrawItem,z,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2,1)
+            self.drawBuff:set(0,self.nextBufferedDrawItem,z,1,4,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2)
             self.nextBufferedDrawItem +=1
         end
     end

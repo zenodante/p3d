@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-15 06:15:47",modified="2025-01-17 23:41:37",revision=12]]
+--[[pod_format="raw",created="2025-01-15 06:15:47",modified="2025-01-22 16:14:31",revision=14]]
 
 include "3d.lua"
 
@@ -6,12 +6,8 @@ include "3d.lua"
 local render = Render:new()
 
 local houseMesh = fetch("testObj.pod")
-local building = {objType = 1,
-                  mesh = houseMesh,
-                  position = vec(0,0,0),
-                  scale = vec(1,1,1),
-                  quat = Quat.YRotate(0.35)
-                  }
+local building =DrawableObj(1,vec(0,0,0),vec(1,1,1),Quat.YRotate(0.35),{["mesh"]=houseMesh})
+
 function _init()
 	local c,m = fetch("test.pod")
 	local palette = m.palette
@@ -30,6 +26,7 @@ end
 
 function _draw()
     cls(0)
+    --print(building.objType)
     render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
     print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
