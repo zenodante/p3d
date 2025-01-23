@@ -345,9 +345,14 @@ end
 
 function UpdateO2WMat(position,scale,quat)
     local resultm34 = quat:Matrix(4) --create 3*4 matrix
-    resultm34:mul(scale.x,true,0,0,3)--apply the x,y,z scale  
-    resultm34:mul(scale.y,true,0,3,3)
-    resultm34:mul(scale.z,true,0,6,3)
+
+    local scaleX = scale.x
+    local scaleY = scale.y
+    local scaleZ = scale.z
+    
+    resultm34:mul(scaleX,true,0,0,3)--apply the x,y,z scale  
+    resultm34:mul(scaleY,true,0,3,3)
+    resultm34:mul(scaleZ,true,0,6,3)
     position:blit(resultm34,0,0,0,3,3,1)
     return resultm34
 end

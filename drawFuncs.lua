@@ -68,6 +68,16 @@ function DrawTexTri(row,vecBuff)
             inv_w1,inv_w3,inv_w2,inv_w2)
 end
 
+function DrawSprite(row,vecBuff)
+    local _,_,_,sprite_idx,sx,sy,sw,sh,dx,dy,dw,dh,_ = row:get()
+    --print(pod(row))
+    sspr(sprite_idx,sx,sy,sw,sh,dx,dy,dw,dh)
+end
+
+
+
+
 drawFuncs={
     [1] = DrawTexTri,
+    [2] = DrawSprite
 }

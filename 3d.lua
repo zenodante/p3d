@@ -8,18 +8,13 @@ local DEFAULT_FOCUS_LENGTH = 1
 
 --end of config
 
-
-
-local vecBuff = userdata("f64",3,MAX_VEC)
-local triBuff = userdata("f64",13,MAX_TRI)
-
-
 include "mathFunc.lua"
 include "drawFuncs.lua"
 include "config.lua"
 local DRAW_WINDOW_WIDTH = settings["DRAW_WINDOW_WIDTH"]
 local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
-
+local HALF_X = DRAW_WINDOW_WIDTH//2
+local HALF_Y = DRAW_WINDOW_HEIGHT//2
 
 
 
@@ -54,8 +49,13 @@ end
 function DrawableObj:Init(objType,position,scale,quat,optionalResourceTable)
     self.objType = objType  or 1
     self.position = position or vec(0,0,0)
-    self.scale = scale or vec(1,1,1)
-    self.quat = quat or Quat(0,0,0,1)
+    if objType == 1 then
+        self.scale = scale or vec(1,1,1)
+    else
+        self.scale = scale or 1
+    end 
+    self.quat = quat 
+    self.positionInClipSpace = nil
     if type(optionalResourceTable) == "table" then
         for key, value in pairs(optionalResourceTable) do
             self[key] = value
@@ -91,7 +91,8 @@ function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
     self.drawBuff = userdata("f64",13,self.max_drawItemNum)
     self.vecBuff = userdata("f64",3,self.max_vecNum)
     self.processObjFuncs = {
-        [1] = self.TextureMeshObjToDraw
+        [1] = self.TextureMeshObjToDraw,
+        [2] = self.SpriteObjToDraw
     }
     
 end
@@ -105,18 +106,60 @@ end
 
 function Render:RenderObjs()
     self:ResetDrawBuff()
+    if #self.objTab == 0 then
+        return
+    end
     --print(#self.objTab)
     for i = 1, #self.objTab do
         local o = self.objTab[i]
-        local objType = o.objType 
-        self.processObjFuncs[objType](self,o)
-        --depends on obj type, call different process and check to add to draw table
+        o.positionInClipSpace = o.position:matmul3d(self.camera.W2ClipMat)
     end
+    -- sort objs, then add obj to draw list, from near to far
+    local sortTable = self:SortObj()
+    --print(pod(sortTable))
+    for i = 0, #self.objTab -1 do
+        
+        local index = sortTable:get(1,i,1)
+            --print(index)
+        local o = self.objTab[index]
+        local objType = o.objType 
+        local state = self.processObjFuncs[objType](self,o)
+        if state == false then
+            --print("not succss")
+            break
+        end
+    end
+
+
+    --for i = 1, #self.objTab do
+    --    if self.nextBufferedDrawItem < self.max_drawItemNum then
+    --        local o = self.objTab[i]
+    --        local objType = o.objType 
+    --        self.processObjFuncs[objType](self,o)
+    --    else
+    --        break
+    --    end
+        --depends on obj type, call different process and check to add to draw table
+    --end
     --finished the draw table, then draw it
     self:Draw()
 end
 
+function Render:SortObj()
+    local length = #self.objTab 
+    local sortTable = userdata("f64",2,length)    
+    for i = 0, length -1 do
+        sortTable:set(0,i,self.objTab[i+1].positionInClipSpace[2],i+1)
+    end
+    if length > 1 then
+        sortTable:sort(0)
+    end
+    --print(pod(sortTable))
+    return sortTable
+end
+
 function Render:Draw()
+    --print(self.nextBufferedDrawItem)
     local num = self.nextBufferedDrawItem
     if num == 0 then
         return
@@ -152,10 +195,11 @@ function Render:TextureMeshObjToDraw(o)
     local quat = o.quat
     local W2ClipMat = self.camera.W2ClipMat
     local veclen = mesh.vector:height()
-    local sprite_idx = mesh.uvmapIdx
+    local sprite_idx = o.sprite_idx
+    --print(sprite_idx)
     if veclen + self.nextBufferedVec > self.max_vecNum then
         print("out of vec buff!")
-        return
+        return false
     end
     local o2wMat = UpdateO2WMat(position,scale,quat)
     local o2clipMat = o2wMat:matmul3d(W2ClipMat)
@@ -167,7 +211,11 @@ function Render:TextureMeshObjToDraw(o)
     local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
     local winding
     local z,z0,z1,z2
+    local maxDrawItem =  self.max_drawItemNum
     for i = 0,trilen-1 do
+        if self.nextBufferedDrawItem >= maxDrawItem then
+            return false
+        end
         idx0,idx1,idx2=mesh.tri:get(0,i,3)
         
         x0,y0=vc:get(0,idx0,2)
@@ -178,6 +226,7 @@ function Render:TextureMeshObjToDraw(o)
         z1=zTable[idx1]
         z2=zTable[idx2]
         z = z0+z1+z2
+        --print(z)
         if (winding<=0.0) or z0 < np or z1 < np or z2 < np then
             --do nothing
         else
@@ -187,9 +236,37 @@ function Render:TextureMeshObjToDraw(o)
             idx2 +=self.nextBufferedVec
             self.drawBuff:set(0,self.nextBufferedDrawItem,z,1,4,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2)
             self.nextBufferedDrawItem +=1
+            --print("added")
         end
     end
     self.nextBufferedVec += veclen
+    return true
+end
+
+function Render:SpriteObjToDraw(o)
+    --local zInClip = o.position:matmul3d(W2ClipMat) --it has been checked
+    local p = o.positionInClipSpace
+    local inv_z = 1.0/p[2]
+    local x = (p[0]*inv_z +1.0)*HALF_X
+    local y = (1.0-p[1]*inv_z)*HALF_Y
+    local cw = o.sw*inv_z*o.scale*HALF_X
+    local ch = o.sh*inv_z*o.scale*HALF_Y
+
+    if self.nextBufferedDrawItem >= self.max_drawItemNum then
+        return false
+    end
+        --calculate the params
+    local cx = x  - 0.5*cw
+    local cy = y  - 0.5*ch
+    local sprite_idx = o.sprite_idx
+    local sx = o.sx
+    local sy = o.sy
+    local sw = o.sw
+    local sh = o.sh 
+    self.drawBuff:set(0,self.nextBufferedDrawItem,p[2],2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
+    self.nextBufferedDrawItem +=1
+    return true
+    
 end
 --*************************Camera**************************
 Camera = {}
@@ -297,6 +374,7 @@ function Camera:LookAt(target_v,up_v)
 
     self._quat = Quat.LookAt(self._pos,target_v,up_v)
     self:UpdataMatrix()
+
 end
 
 
