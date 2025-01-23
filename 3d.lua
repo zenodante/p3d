@@ -110,10 +110,7 @@ function Render:RenderObjs()
         return
     end
     --print(#self.objTab)
-    for i = 1, #self.objTab do
-        local o = self.objTab[i]
-        o.positionInClipSpace = o.position:matmul3d(self.camera.W2ClipMat)
-    end
+    
     -- sort objs, then add obj to draw list, from near to far
     local sortTable = self:SortObj()
     --print(pod(sortTable))
@@ -130,23 +127,16 @@ function Render:RenderObjs()
         end
     end
 
-
-    --for i = 1, #self.objTab do
-    --    if self.nextBufferedDrawItem < self.max_drawItemNum then
-    --        local o = self.objTab[i]
-    --        local objType = o.objType 
-    --        self.processObjFuncs[objType](self,o)
-    --    else
-    --        break
-    --    end
-        --depends on obj type, call different process and check to add to draw table
-    --end
     --finished the draw table, then draw it
     self:Draw()
 end
 
 function Render:SortObj()
-    local length = #self.objTab 
+    local length = #self.objTab
+    for i = 1, length do
+        local o = self.objTab[i]
+        o.positionInClipSpace = o.position:matmul3d(self.camera.W2ClipMat)
+    end
     local sortTable = userdata("f64",2,length)    
     for i = 0, length -1 do
         sortTable:set(0,i,self.objTab[i+1].positionInClipSpace[2],i+1)
@@ -250,7 +240,7 @@ function Render:SpriteObjToDraw(o)
     local x = (p[0]*inv_z +1.0)*HALF_X
     local y = (1.0-p[1]*inv_z)*HALF_Y
     local cw = o.sw*inv_z*o.scale*HALF_X
-    local ch = o.sh*inv_z*o.scale*HALF_Y
+    local ch = o.sh*inv_z*o.scale*HALF_X
 
     if self.nextBufferedDrawItem >= self.max_drawItemNum then
         return false

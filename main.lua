@@ -7,8 +7,11 @@ local render = Render:new()
 
 local houseMesh = fetch("testObj.pod")
 local building =DrawableObj(1,vec(0,0,0),vec(1,1,1),Quat.YRotate(0.35),{["mesh"]=houseMesh,["sprite_idx"]=0})
---local sprite = DrawableObj(2,vec(0,0,-5),0.3,nil,{["sprite_idx"]=0,["sx"]=128,["sy"]=128,["sw"]=20,["sh"]=20})
+local sprite0 = DrawableObj(2,vec(0,0,-5),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["sy"]=0,["sw"]=16,["sh"]=16})
+local sprite1 = DrawableObj(2,vec(6,6,0),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["sy"]=0,["sw"]=16,["sh"]=16})
+local sprite2 = DrawableObj(2,vec(12,12,5),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["sy"]=0,["sw"]=16,["sh"]=16})
 --local building2 =DrawableObj(1,vec(5,0,5),vec(1,1,1),Quat.YRotate(0.35),{["mesh"]=houseMesh})
+
 function _init()
 	local c,m = fetch("test.pod")
 	local palette = m.palette
@@ -23,12 +26,15 @@ function _init()
     
     render.camera:position(vec(0,5,-20))
     render:AddObjToDrawTable(building)
-    --render:AddObjToDrawTable(sprite)
+    render:AddObjToDrawTable(sprite0)
+    render:AddObjToDrawTable(sprite1)
+    render:AddObjToDrawTable(sprite2)
     --render:AddObjToDrawTable(building2)
 end
 
 function _draw()
     cls(0)
+
     --print(houseMesh.uvmapIdx)
     render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
