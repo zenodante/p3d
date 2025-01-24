@@ -13,6 +13,18 @@ local sprite2 = DrawableObj(2,vec(12,12,5),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["
 --local building2 =DrawableObj(1,vec(5,0,5),vec(1,1,1),Quat.YRotate(0.35),{["mesh"]=houseMesh})
 
 function _init()
+    local h = houseMesh.tex:height()
+    --[[
+    for i = 0,h-1 do
+        local u0,v0,u1,v1,u2,v2 = houseMesh.tex:get(0,i)
+        for j = 0, 5 do
+            local v = houseMesh.tex:get(j,i,1)
+            if v%16 == 1 then
+                houseMesh.tex:set(j,i,v-1)
+            end
+        end
+    end
+    ]]
 	local c,m = fetch("test.pod")
 	local palette = m.palette
 	palette = split(palette,"\n",false)
@@ -38,8 +50,11 @@ function _draw()
     --print(houseMesh.uvmapIdx)
     render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
-    print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
-
+    --print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
+    for i =100,120 do
+        print(pod(houseMesh.tex:row(i)))
+        
+    end
 end
 
 function _update()
