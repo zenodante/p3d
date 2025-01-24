@@ -357,6 +357,44 @@ function UpdateO2WMat(position,scale,quat)
     return resultm34
 end
 
+function AABBTest(xMax,xMin,yMax,yMin,zMax,zMin,o2clipMat,farPlane,nearPlane)
+    local aabb = userdata("f64",3,8)
+    aabb:set(0,0,xMax,yMax,zMax,
+                 xMax,yMax,zMin,
+                 xMax,yMin,zMax,
+                 xMax,yMin,zMin,
+                 xMin,yMax,zMax,
+                 xMin,yMax,zMin,
+                 xMin,yMin,zMax,
+                 xMin,yMin,zMin)
+    local o2clipMat33 = userdata("f64",3,3)
+    local o2clipxyz = userdata("f64",3,1)
+    o2clipMat:blit(o2clipMat33,0,0,0,0,3,3)
+    o2clipMat:blit(o2clipxyz,0,3,0,0,3,1)  
+    local vc=aabb:matmul(o2clipMat33)
+    vc:add(o2clipxyz,true,0,0,3,0,3,8)
+    local z = vc:column(2)
+    local inv_z = 1/z--get 1/z
+    vc:mul(inv_z,true,0,0,1,1,3,8)
+	vc:mul(inv_z,true,0,1,1,1,3,8)
+    --now aabb in clip space
+    local clipMin, clipMax = -1, 1
+    vc:sort(0)
+    xMax = vc:get(0,7,1)
+    xMin = vc:get(0,0,1)
+    vc:sort(1)
+    yMax = vc:get(1,7,1)
+    yMin = vc:get(1,0,1)
+    vc:sort(2)
+    zMax = vc:get(2,7,1)
+    zMin = vc:get(2,0,1)
+    --print(string.format("x: %3.3f %3.3f y: %3.3f %3.3f z: %3.3f %3.3f ", xMax,xMin,yMax,yMin,zMax,zMin))
+    local xOverlap = not (xMin > clipMax or xMax < clipMin)
+    local yOverlap = not (yMin > clipMax or yMax < clipMin)
+    local zOverlap = not (zMin > farPlane or zMax < nearPlane)
+    return xOverlap and yOverlap and zOverlap  
+end
+
 function VecList2Screen(v,o2clipMat)
     local len = v:height()
     local o2clipMat33 = userdata("f64",3,3)

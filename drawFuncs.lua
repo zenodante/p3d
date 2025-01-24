@@ -25,7 +25,7 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     local cy1=ceil(y1)
     local len=cy1-cy0
     if(len<=0) then return end   
-    local lm1=len - 1
+    local lm1=len
     lt=l+lm1*ldx
     rt=r+lm1*rdx
     lut=lu+lm1*ldu
@@ -35,8 +35,10 @@ function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,r
     ltinvW=linvW+lm1*ldinvW
     rtinvW=rinvW+lm1*rdinvW
     ud:set(0,0  ,sprite_idx,l ,cy0,r ,cy0,lu ,lv ,ru ,rv ,linvW ,rinvW ,0x300)  
-    ud:set(0,len-1,sprite_idx,lt,cy1-1,rt,cy1-1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
-    tline3d(ud:lerp(0,len-1,12,12,1),0,len,12,12)
+    ud:set(0,len,sprite_idx,lt,cy1,rt,cy1,lut,lvt,rut,rvt,ltinvW,rtinvW,0x300)  
+    --ud:set(0,0  ,2,l ,cy0,r ,cy0,1 ,1 ,2,1 ,linvW ,rinvW ,0x300)  
+    --ud:set(0,len,2,lt,cy1,rt,cy1,1,2,2,2,ltinvW,rtinvW,0x300)  
+    tline3d(ud:lerp(0,len,12,12,1),0,len,12,12)
 
 end
 

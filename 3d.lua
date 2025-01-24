@@ -73,14 +73,15 @@ setmetatable(DrawableObj, {
 Render = {}
 Render.__index = Render
 
-function Render:new(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
+function Render:new(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane)
     local instance = setmetatable({},Render)
-    instance:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
+    instance:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane)
     return instance
 end
 
-function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane)
+function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane)
     self.nearPlane = nearPlane or 0.1
+    self.farPlane = farPlane or 100
     self.max_drawItemNum = max_drawItemNum or 1000
     self.max_vecNum = max_vecNum or 1000
     self.camera = Camera:new(DEFAULT_FOCUS_LENGTH,vec(0,0,0),Quat(0,0,0,1))
@@ -117,14 +118,13 @@ function Render:RenderObjs()
     for i = 0, #self.objTab -1 do
         
         local index = sortTable:get(1,i,1)
-            --print(index)
+        --print(sortTable:get(0,i,1))
         local o = self.objTab[index]
         local objType = o.objType 
         local state = self.processObjFuncs[objType](self,o)
-        if state == false then
-            --print("not succss")
-            break
-        end
+        --if state == false then
+            --print("item not added")    
+        --end
     end
 
     --finished the draw table, then draw it
@@ -187,12 +187,20 @@ function Render:TextureMeshObjToDraw(o)
     local veclen = mesh.vector:height()
     local sprite_idx = o.sprite_idx
     --print(sprite_idx)
-    if veclen + self.nextBufferedVec > self.max_vecNum then
-        print("out of vec buff!")
-        return false
-    end
+    
     local o2wMat = UpdateO2WMat(position,scale,quat)
     local o2clipMat = o2wMat:matmul3d(W2ClipMat)
+    if mesh.aabb != nil then
+        local xMax,yMax,zMax,xMin,yMin,zMin = mesh.aabb:get()
+        if  not AABBTest(xMax,xMin,yMax,yMin,zMax,zMin,o2clipMat,self.farPlane,self.nearPlane) then
+            return false
+        end
+    end
+    if veclen + self.nextBufferedVec > self.max_vecNum then
+        --print("out of vec buff!")
+        return false
+    end
+
     local vc,zTable = VecList2Screen(mesh.vector,o2clipMat)
     --copy vc to the global vector buffer
     vc:blit(self.vecBuff,0,0,0,self.nextBufferedVec,3,veclen)
@@ -235,24 +243,33 @@ end
 
 function Render:SpriteObjToDraw(o)
     --local zInClip = o.position:matmul3d(W2ClipMat) --it has been checked
+    if self.nextBufferedDrawItem >= self.max_drawItemNum then
+        return false
+    end
     local p = o.positionInClipSpace
+    if p[2] < self.nearPlane or p[2] > self.farPlane then
+        return false
+    end
     local inv_z = 1.0/p[2]
     local x = (p[0]*inv_z +1.0)*HALF_X
     local y = (1.0-p[1]*inv_z)*HALF_Y
     local cw = o.sw*inv_z*o.scale*HALF_X
     local ch = o.sh*inv_z*o.scale*HALF_X
 
-    if self.nextBufferedDrawItem >= self.max_drawItemNum then
-        return false
-    end
+    
         --calculate the params
     local cx = x  - 0.5*cw
     local cy = y  - 0.5*ch
+    if cx> DRAW_WINDOW_WIDTH or cy > DRAW_WINDOW_HEIGHT or cx + cw < 0 or cy + ch < 0 then
+        --out of the screen
+        return false
+    end
     local sprite_idx = o.sprite_idx
     local sx = o.sx
     local sy = o.sy
     local sw = o.sw
     local sh = o.sh 
+    
     self.drawBuff:set(0,self.nextBufferedDrawItem,p[2],2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
     self.nextBufferedDrawItem +=1
     return true
