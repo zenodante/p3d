@@ -97,6 +97,7 @@ function DrawTexTri2(row,vecBuff)
     
     if (y0 >=  DRAW_WINDOW_HEIGHT) or (y2 <=0) then return end
     if (ceil(y2)-ceil(y0))<=1 then return end
+    local fact = (ceil(y1)-y0)/(y2-y0)
     local inv_w0,inv_w1,inv_w2=vec0[2],vec1[2],vec2[2]
     u0,u1,u2=u0*inv_w0,u1*inv_w1,u2*inv_w2
     v0,v1,v2=v0*inv_w0,v1*inv_w1,v2*inv_w2
@@ -174,16 +175,11 @@ function DrawTexTri2(row,vecBuff)
         local v12 = v1+s_down*dv12
         local inv_w12 = inv_w1+s_down*dinvW12
 
-        --local fact = (cy1-y0)/(y2-y0)
-        --x02 = x0+(x2-x0)*fact
-        --u02= u0+(u2-u0)*fact
-        --v02 = v0+(v2-v0)*fact
-        --inv_w02 = inv_w0+(inv_w2-inv_w0)*fact 
-
-        x02 += dx02
-        u02 += du02
-        v02 += dv02
-        inv_w02 += dinvW02
+        
+        x02 = x0+(x2-x0)*fact
+        u02= u0+(u2-u0)*fact
+        v02 = v0+(v2-v0)*fact
+        inv_w02 = inv_w0+(inv_w2-inv_w0)*fact 
         ud:set(0,0,sprite_idx,x02,cy1,x12,cy1,u02,v02,u12,v12,inv_w02,inv_w12,0x300)
         local lm = len_down-1
         if len_down>1 then
@@ -197,9 +193,9 @@ function DrawTexTri2(row,vecBuff)
             inv_w02 += lm*dinvW02
             ud:set(0,lm,sprite_idx,x02,cy2-1,x12,cy2-1,u02,v02,u12,v12,inv_w02,inv_w12,0x300)
             ud:lerp(0,lm,12,12,1)
-            
+
         end
-        tline3d(ud,0,len_down,12,12)   
+        tline3d(ud,0,len_down,12,12)   --second half
     end
 end
 
