@@ -15,7 +15,7 @@ houseMesh.aabb = userdata("f64",3,2)
 
 function _init()
     local h = houseMesh.tex:height()
-    houseMesh.aabb:set(0,0,1,1,1,-1,-1,-1)
+    
     --[[
     for i = 0,h-1 do
         local u0,v0,u1,v1,u2,v2 = houseMesh.tex:get(0,i)
@@ -51,7 +51,7 @@ function _draw()
 
     render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
-    --print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
+    print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
 end
 
 function _update()

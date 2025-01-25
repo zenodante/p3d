@@ -270,7 +270,7 @@ function Render:SpriteObjToDraw(o)
     local sw = o.sw
     local sh = o.sh 
     
-    self.drawBuff:set(0,self.nextBufferedDrawItem,p[2],2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
+    self.drawBuff:set(0,self.nextBufferedDrawItem,p[2]*3,2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
     self.nextBufferedDrawItem +=1
     return true
     
