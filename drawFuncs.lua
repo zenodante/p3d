@@ -5,7 +5,7 @@ local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
 --local DRAW_WINDOW_HEIGHT = 270
 
 local ud = userdata("f64",12,270)
-
+--[[
 function RastHalf(sprite_idx,l,r,lt,rt,lu,lv,ru,rv,lut,lvt,rut,rvt,y0,y1,linvW,rinvW,ltinvW,rtinvW)
     local dy=y1-y0
     local ldx,rdx=(lt-l)/dy,(rt-r)/dy
@@ -78,7 +78,7 @@ function DrawTexTri(row,vecBuff)
             u2,v2,u2,v2,y1,y2,
             inv_w1,inv_w3,inv_w2,inv_w2)
 end
-
+]]
 function DrawSprite(row,vecBuff)
     local _,_,_,sprite_idx,sx,sy,sw,sh,dx,dy,dw,dh,_ = row:get()
     --print(pod(row))
@@ -119,11 +119,11 @@ function DrawTexTri2(row,vecBuff)
     else
         s_down=ceil(y1)-y1
     end
-    if y1 >= DRAW_WINDOW_HEIGHT then
-            y1=DRAW_WINDOW_HEIGHT-1
+    if y1 > DRAW_WINDOW_HEIGHT then
+            y1=DRAW_WINDOW_HEIGHT
     end
-    if y2 >= DRAW_WINDOW_HEIGHT then
-        y2=DRAW_WINDOW_HEIGHT-1
+    if y2 > DRAW_WINDOW_HEIGHT then
+        y2=DRAW_WINDOW_HEIGHT
     end
     local cy0,cy1,cy2=ceil(y0),ceil(y1),ceil(y2)
     
@@ -173,6 +173,13 @@ function DrawTexTri2(row,vecBuff)
         local u12 = u1+s_down*du12
         local v12 = v1+s_down*dv12
         local inv_w12 = inv_w1+s_down*dinvW12
+
+        --local fact = (cy1-y0)/(y2-y0)
+        --x02 = x0+(x2-x0)*fact
+        --u02= u0+(u2-u0)*fact
+        --v02 = v0+(v2-v0)*fact
+        --inv_w02 = inv_w0+(inv_w2-inv_w0)*fact 
+
         x02 += dx02
         u02 += du02
         v02 += dv02
@@ -190,11 +197,11 @@ function DrawTexTri2(row,vecBuff)
             inv_w02 += lm*dinvW02
             ud:set(0,lm,sprite_idx,x02,cy2-1,x12,cy2-1,u02,v02,u12,v12,inv_w02,inv_w12,0x300)
             ud:lerp(0,lm,12,12,1)
+            
         end
         tline3d(ud,0,len_down,12,12)   
     end
 end
-
 
 drawFuncs={
     [1] = DrawTexTri2,
