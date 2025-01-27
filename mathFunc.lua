@@ -358,6 +358,7 @@ function UpdateO2WMat(position,scale,quat)
 end
 
 function AABBTest(xMax,xMin,yMax,yMin,zMax,zMin,o2clipMat,farPlane,nearPlane)
+    --print(string.format("x: %3.3f %3.3f y: %3.3f %3.3f z: %3.3f %3.3f ", xMax,xMin,yMax,yMin,zMax,zMin))
     local aabb = userdata("f64",3,8)
     aabb:set(0,0,xMax,yMax,zMax,
                  xMax,yMax,zMin,

@@ -11,7 +11,7 @@ local sprite0 = DrawableObj(2,vec(0,0,-5),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["s
 local sprite1 = DrawableObj(2,vec(6,6,0),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["sy"]=0,["sw"]=16,["sh"]=16})
 local sprite2 = DrawableObj(2,vec(12,12,5),0.1,nil,{["sprite_idx"]=1,["sx"]=0,["sy"]=0,["sw"]=16,["sh"]=16})
 --local building2 =DrawableObj(1,vec(5,0,5),vec(1,1,1),Quat.YRotate(0.35),{["mesh"]=houseMesh})
-houseMesh.aabb = userdata("f64",3,2)
+--houseMesh.aabb = userdata("f64",3,2)
 
 function _init()
     local h = houseMesh.tex:height()
@@ -44,12 +44,13 @@ function _init()
     render:AddObjToDrawTable(sprite1)
     render:AddObjToDrawTable(sprite2)
     --render:AddObjToDrawTable(building2)
+    render.camera:LookAt(vec(0,0,0),vec(0,1,0))
 end
 
 function _draw()
     cls(0)
 
-    render.camera:LookAt(vec(0,0,0),vec(0,1,0))
+    --render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
     print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
 end

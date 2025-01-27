@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-22 16:11:56",revision=39]]
+--[[pod_format="raw",created="2025-01-16 06:08:33",modified="2025-01-27 06:01:26",revision=41]]
 
 --Left hand coordination, row vector, right mult matrix
 --config area
@@ -121,6 +121,7 @@ function Render:RenderObjs()
         --print(sortTable:get(0,i,1))
         local o = self.objTab[index]
         local objType = o.objType 
+        --print(objType)
         local state = self.processObjFuncs[objType](self,o)
         --if state == false then
             --print("item not added")    
@@ -153,16 +154,22 @@ function Render:Draw()
     local num = self.nextBufferedDrawItem
     if num == 0 then
         return
+    elseif num == 1 then
+        local sortBuff = self.drawBuff:row(0)
+        local objType = sortBuff:get(1,0,1)
+        self.drawFuncs[objType](sortBuff,self.vecBuff) 
+    else
+        local sortBuff = userdata("f64",13,num)
+        self.drawBuff:blit(sortBuff,0,0,0,0,13,num)
+        --print(#self.drawFuncs)
+        sortBuff:sort(0)
+        for i = 0,num-1 do
+            local objType = sortBuff:get(1,num-1-i,1)
+            local record = sortBuff:row(num-1-i)
+            self.drawFuncs[objType](record,self.vecBuff) 
+        end
     end
-    local sortBuff = userdata("f64",13,num)
-    self.drawBuff:blit(sortBuff,0,0,0,0,13,num)
-    --print(#self.drawFuncs)
-    sortBuff:sort(0)
-    for i = 0,num-1 do
-        local objType = sortBuff:get(1,num-1-i,1)
-        local record = sortBuff:row(num-1-i)
-        self.drawFuncs[objType](record,self.vecBuff) 
-    end
+
 end
 
 function Render:AddObjToDrawTable(o)
@@ -269,7 +276,6 @@ function Render:SpriteObjToDraw(o)
     local sy = o.sy
     local sw = o.sw
     local sh = o.sh 
-    
     self.drawBuff:set(0,self.nextBufferedDrawItem,p[2]*3,2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
     self.nextBufferedDrawItem +=1
     return true
