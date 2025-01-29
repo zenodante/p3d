@@ -53,6 +53,11 @@ function _draw()
     --render.camera:LookAt(vec(0,0,0),vec(0,1,0))
     render:RenderObjs()
     print(string.format("cpu: %3.3f (%dfps)", stat(1), stat(7)), 10, 10, 1)
+    local r=userdata("f64",12,1)
+    r:set(0,0,0,0,0,12,0,1,2)
+    local vb = userdata("f64",3,3)
+    vb:set(0,0,5,10,1,0,20,1,15,30,1)
+    DrawColorTri(r,vb)
 end
 
 function _update()

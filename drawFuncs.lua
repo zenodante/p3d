@@ -13,6 +13,63 @@ function DrawSprite(row,vecBuff)
     sspr(sprite_idx,sx,sy,sw,sh,dx,dy,dw,dh)
 end
 
+function DrawColorTri(row,vecBuff)
+    local drawColor,vec0Idx,vec1Idx,vec2Idx = row:get(3,0,4)
+    local vec0,vec1,vec2 = vecBuff:row(vec0Idx),vecBuff:row(vec1Idx),vecBuff:row(vec2Idx)
+    color(drawColor)
+    if(vec0.y > vec1.y) then 
+        vec0,vec1=vec1,vec0 
+    end
+    if(vec0.y > vec2.y) then 
+        vec0,vec2=vec2,vec0  
+    end
+    if(vec1.y > vec2.y) then 
+        vec1,vec2=vec2,vec1 
+    end  
+    local x0,x1,x2=vec0.x,vec1.x,vec2.x
+    local y0,y1,y2=vec0.y,vec1.y,vec2.y
+    --print(string.format("v0: %3.3f %3.3f v1: %3.3f %3.3f v2: %3.3f %3.3f ",x0,y0,x1,y1,x2,y2))
+    if (y0 >=  DRAW_WINDOW_HEIGHT) or (y2 <=0) then return end
+    if (ceil(y2)-ceil(y0))<=1 then return end
+
+    local t = (y1-y0)/(y2-y0)
+
+
+    
+	local v0,v1 = 
+		vec(x0,y0,x0,y0),
+		vec(x1,y1,(x2-x0)*t+x0, y1)
+	
+	local start_y = y0 < -1 and -1 or y0\1
+	local mid_y = y1 < -1 and -1 or y1 > DRAW_WINDOW_HEIGHT-1 and DRAW_WINDOW_HEIGHT-1 or y1\1
+	local stop_y = (y2 <= DRAW_WINDOW_HEIGHT-1 and y2\1 or DRAW_WINDOW_HEIGHT-1)
+	
+	-- Top half
+	local dy = mid_y-start_y
+	if dy > 0 then
+		local slope = (v1-v0):div((y1-y0))
+        --print(pod(slope*(start_y+1-y0)+v0))
+		ud:copy(slope*(start_y+1-y0)+v0,true,0,0,4):copy(slope,true,0,12,4,0,12,dy-1)
+		
+		rect(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4)
+        --print(string.format("ud0: %3.3f %3.3f %3.3f %3.3f",ud:get(0,0,1),ud:get(1,0,1),ud:get(2,0,1),ud:get(3,0,1)))
+        --print(string.format("ud1: %3.3f %3.3f %3.3f %3.3f",ud:get(0,1,1),ud:get(1,1,1),ud:get(2,1,1),ud:get(3,1,1)))
+	end
+	
+	-- Bottom half
+	dy = stop_y-mid_y
+	if dy > 0 then
+		-- This is, otherwise, the only place where v3 would be used,
+		-- so we just inline it.
+		local slope = (vec(x2,y2,x2,y2)-v1)/(y2-y1)
+		
+		ud:copy(slope*(mid_y+1-y1)+v1,true,0,0,4):copy(slope,true,0,12,4,0,12,dy-1)
+			
+		rect(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4)
+	end
+end
+
+
 function DrawTexTri(row,vecBuff)
     local _,_,_,sprite_idx,vec0Idx,vec1Idx,vec2Idx,u0,v0,u1,v1,u2,v2 = row:get()
     local vec0,vec1,vec2 = vecBuff:row(vec0Idx),vecBuff:row(vec1Idx),vecBuff:row(vec2Idx)
@@ -136,6 +193,7 @@ function DrawTexTri(row,vecBuff)
     end
 end
 
+--avoid lerp
 function DrawTexTri2(row,vecBuff)
     --print("tri")
     local _,_,_,sprite_idx,vec0Idx,vec1Idx,vec2Idx,u0,v0,u1,v1,u2,v2 = row:get()

@@ -10,6 +10,7 @@ local DEFAULT_FOCUS_LENGTH = 1
 
 include "mathFunc.lua"
 include "drawFuncs.lua"
+include "objToProcess.lua"
 include "config.lua"
 local DRAW_WINDOW_WIDTH = settings["DRAW_WINDOW_WIDTH"]
 local DRAW_WINDOW_HEIGHT = settings["DRAW_WINDOW_HEIGHT"]
@@ -79,7 +80,7 @@ function Render:new(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane)
     return instance
 end
 
-function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane)
+function Render:Init(max_drawItemNum,max_vecNum,nearPlane,farPlane,drawFuncTable,processObjFuncsTab)
     self.nearPlane = nearPlane or 0.1
     self.farPlane = farPlane or 100
     self.max_drawItemNum = max_drawItemNum or 1000
@@ -91,10 +92,7 @@ function Render:Init(drawFuncTable,max_drawItemNum,max_vecNum,nearPlane,farPlane
     self.nextBufferedVec = 0
     self.drawBuff = userdata("f64",13,self.max_drawItemNum)
     self.vecBuff = userdata("f64",3,self.max_vecNum)
-    self.processObjFuncs = {
-        [1] = self.TextureMeshObjToDraw,
-        [2] = self.SpriteObjToDraw
-    }
+    self.processObjFuncs = processObjFuncsTab or processObjFuncs
     
 end
 
@@ -184,103 +182,7 @@ function Render:CleanDrawTable()
 
 end
 
-function Render:TextureMeshObjToDraw(o)
-    local np = self.nearPlane
-    local mesh = o.mesh
-    local position = o.position
-    local scale  = o.scale
-    local quat = o.quat
-    local W2ClipMat = self.camera.W2ClipMat
-    local veclen = mesh.vector:height()
-    local sprite_idx = o.sprite_idx
-    --print(sprite_idx)
-    
-    local o2wMat = UpdateO2WMat(position,scale,quat)
-    local o2clipMat = o2wMat:matmul3d(W2ClipMat)
-    if mesh.aabb != nil then
-        local xMax,yMax,zMax,xMin,yMin,zMin = mesh.aabb:get()
-        if  not AABBTest(xMax,xMin,yMax,yMin,zMax,zMin,o2clipMat,self.farPlane,self.nearPlane) then
-            return false
-        end
-    end
-    if veclen + self.nextBufferedVec > self.max_vecNum then
-        --print("out of vec buff!")
-        return false
-    end
 
-    local vc,zTable = VecList2Screen(mesh.vector,o2clipMat)
-    --copy vc to the global vector buffer
-    vc:blit(self.vecBuff,0,0,0,self.nextBufferedVec,3,veclen)
-    local trilen  = mesh.tri:height()
-    local x0,y0,x1,y1,x2,y2
-    local idx0,idx1,idx2,u0,v0,u1,v1,u2,v2
-    local winding
-    local z,z0,z1,z2
-    local maxDrawItem =  self.max_drawItemNum
-    for i = 0,trilen-1 do
-        if self.nextBufferedDrawItem >= maxDrawItem then
-            return false
-        end
-        idx0,idx1,idx2=mesh.tri:get(0,i,3)
-        
-        x0,y0=vc:get(0,idx0,2)
-        x1,y1=vc:get(0,idx1,2)
-        x2,y2=vc:get(0,idx2,2)
-        winding = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
-        z0=zTable[idx0]
-        z1=zTable[idx1]
-        z2=zTable[idx2]
-        z = z0+z1+z2
-        --print(z)
-        if (winding<=0.0) or z0 < np or z1 < np or z2 < np then
-            --do nothing
-        else
-            u0,v0,u1,v1,u2,v2 = mesh.tex:get(0,i,6)
-            idx0 +=self.nextBufferedVec 
-            idx1 +=self.nextBufferedVec 
-            idx2 +=self.nextBufferedVec
-            self.drawBuff:set(0,self.nextBufferedDrawItem,z,1,4,sprite_idx,idx0,idx1,idx2,u0,v0,u1,v1,u2,v2)
-            self.nextBufferedDrawItem +=1
-            --print("added")
-        end
-    end
-    self.nextBufferedVec += veclen
-    return true
-end
-
-function Render:SpriteObjToDraw(o)
-    --local zInClip = o.position:matmul3d(W2ClipMat) --it has been checked
-    if self.nextBufferedDrawItem >= self.max_drawItemNum then
-        return false
-    end
-    local p = o.positionInClipSpace
-    if p[2] < self.nearPlane or p[2] > self.farPlane then
-        return false
-    end
-    local inv_z = 1.0/p[2]
-    local x = (p[0]*inv_z +1.0)*HALF_X
-    local y = (1.0-p[1]*inv_z)*HALF_Y
-    local cw = o.sw*inv_z*o.scale*HALF_X
-    local ch = o.sh*inv_z*o.scale*HALF_X
-
-    
-        --calculate the params
-    local cx = x  - 0.5*cw
-    local cy = y  - 0.5*ch
-    if cx> DRAW_WINDOW_WIDTH or cy > DRAW_WINDOW_HEIGHT or cx + cw < 0 or cy + ch < 0 then
-        --out of the screen
-        return false
-    end
-    local sprite_idx = o.sprite_idx
-    local sx = o.sx
-    local sy = o.sy
-    local sw = o.sw
-    local sh = o.sh 
-    self.drawBuff:set(0,self.nextBufferedDrawItem,p[2]*3,2,4,sprite_idx,sx,sy,sw,sh,cx,cy,cw,ch)
-    self.nextBufferedDrawItem +=1
-    return true
-    
-end
 --*************************Camera**************************
 Camera = {}
 Camera.__index = Camera
