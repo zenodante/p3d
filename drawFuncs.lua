@@ -50,10 +50,7 @@ function DrawColorTri(row,vecBuff)
 		local slope = (v1-v0):div((y1-y0))
         --print(pod(slope*(start_y+1-y0)+v0))
 		ud:copy(slope*(start_y+1-y0)+v0,true,0,0,4):copy(slope,true,0,12,4,0,12,dy-1)
-		
-		rect(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4)
-        --print(string.format("ud0: %3.3f %3.3f %3.3f %3.3f",ud:get(0,0,1),ud:get(1,0,1),ud:get(2,0,1),ud:get(3,0,1)))
-        --print(string.format("ud1: %3.3f %3.3f %3.3f %3.3f",ud:get(0,1,1),ud:get(1,1,1),ud:get(2,1,1),ud:get(3,1,1)))
+		rectfill(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4,12)
 	end
 	
 	-- Bottom half
@@ -62,11 +59,11 @@ function DrawColorTri(row,vecBuff)
 		-- This is, otherwise, the only place where v3 would be used,
 		-- so we just inline it.
 		local slope = (vec(x2,y2,x2,y2)-v1)/(y2-y1)
-		
-		ud:copy(slope*(mid_y+1-y1)+v1,true,0,0,4):copy(slope,true,0,12,4,0,12,dy-1)
-			
-		rect(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4)
+		ud:copy(slope*(mid_y+1-y1)+v1,true,0,0,4):copy(slope,true,0,12,4,0,12,dy-1)	
+		rectfill(ud:add(ud,true,0,12,4,12,12,dy-1),0,dy,4,12)
+
 	end
+
 end
 
 
@@ -270,5 +267,6 @@ end
 
 drawFuncs={
     [1] = DrawTexTri,
-    [2] = DrawSprite
+    [2] = DrawSprite,
+    [3] = DrawColorTri
 }

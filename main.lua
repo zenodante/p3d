@@ -58,6 +58,7 @@ function _draw()
     local vb = userdata("f64",3,3)
     vb:set(0,0,5,10,1,0,20,1,15,30,1)
     DrawColorTri(r,vb)
+    --rect(30,30,50,30)
 end
 
 function _update()
